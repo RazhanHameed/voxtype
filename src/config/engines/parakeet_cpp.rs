@@ -58,6 +58,44 @@ mod tests {
     }
 
     #[test]
+    fn test_engine_selected_by_dashed_name() {
+        use crate::config::{Config, TranscriptionEngine};
+
+        let config: Config = toml::from_str(
+            r#"
+            engine = "parakeet-cpp"
+
+            [hotkey]
+            key = "SCROLLLOCK"
+
+            [audio]
+            device = "default"
+            sample_rate = 16000
+            max_duration_secs = 60
+
+            [whisper]
+            model = "base.en"
+            language = "en"
+
+            [output]
+            mode = "type"
+
+            [parakeet_cpp]
+            model = "fluid-speech-mini"
+            device = "Vulkan1"
+            "#,
+        )
+        .unwrap();
+
+        assert_eq!(config.engine, TranscriptionEngine::ParakeetCpp);
+        assert_eq!(config.model_name(), "fluid-speech-mini");
+        assert_eq!(
+            config.parakeet_cpp.unwrap().device.as_deref(),
+            Some("Vulkan1")
+        );
+    }
+
+    #[test]
     fn test_parse_minimal() {
         let c: ParakeetCppConfig = toml::from_str(r#"model = "/m/x.gguf""#).unwrap();
         assert_eq!(c.model, "/m/x.gguf");

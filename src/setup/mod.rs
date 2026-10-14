@@ -511,6 +511,7 @@ pub(crate) enum ModelKind {
     Paraformer,
     Dolphin,
     Omnilingual,
+    ParakeetCpp,
     Cohere,
     OpenVino,
 }
@@ -541,6 +542,8 @@ pub(crate) fn classify_model_override(name: &str) -> anyhow::Result<ModelKind> {
         Ok(ModelKind::Dolphin)
     } else if model::is_omnilingual_model(name) {
         Ok(ModelKind::Omnilingual)
+    } else if model::is_parakeet_cpp_model(name) {
+        Ok(ModelKind::ParakeetCpp)
     } else if model::is_cohere_model(name) {
         Ok(ModelKind::Cohere)
     } else if model::is_openvino_model(name) {
@@ -549,7 +552,7 @@ pub(crate) fn classify_model_override(name: &str) -> anyhow::Result<ModelKind> {
         anyhow::bail!(
             "Unknown model '{}'.\n  Whisper: {}\n  Parakeet: {}\n  SenseVoice: {}\n  \
              Moonshine: {}\n  Paraformer: {}\n  Dolphin: {}\n  Omnilingual: {}\n  \
-             Cohere: {}\n  OpenVINO: {}",
+             parakeet.cpp: {}\n  Cohere: {}\n  OpenVINO: {}",
             name,
             model::valid_model_names().join(", "),
             model::valid_parakeet_model_names().join(", "),
@@ -558,6 +561,7 @@ pub(crate) fn classify_model_override(name: &str) -> anyhow::Result<ModelKind> {
             model::paraformer_setup_model_names().join(", "),
             model::dolphin_setup_model_names().join(", "),
             model::omnilingual_setup_model_names().join(", "),
+            model::parakeet_cpp_setup_model_names().join(", "),
             model::cohere_setup_model_names().join(", "),
             model::valid_openvino_model_names().join(", "),
         )
@@ -630,6 +634,17 @@ fn onnx_setup_route(kind: ModelKind) -> Option<OnnxSetupRoute> {
             config_value: model::omnilingual_dir_name,
             validate: model::validate_onnx_ctc_model,
             download: model::download_omnilingual_model,
+        }),
+        ModelKind::ParakeetCpp => Some(OnnxSetupRoute {
+            display: "parakeet.cpp",
+            engine: "parakeet-cpp",
+            feature: "",
+            // libparakeet.so is loaded at runtime; every binary can run it.
+            enabled: true,
+            dir_name: model::parakeet_cpp_dir_name,
+            config_value: model::parakeet_cpp_dir_name,
+            validate: model::validate_gguf_model,
+            download: model::download_parakeet_cpp_model,
         }),
         ModelKind::Cohere => Some(OnnxSetupRoute {
             display: "Cohere Transcribe",
@@ -1400,6 +1415,7 @@ mod tests {
             ("paraformer-zh", ModelKind::Paraformer),
             ("dolphin-base", ModelKind::Dolphin),
             ("omnilingual-300m", ModelKind::Omnilingual),
+            ("fluid-speech-mini", ModelKind::ParakeetCpp),
             ("cohere-transcribe-q4f16", ModelKind::Cohere),
             ("cohere-transcribe-fp16", ModelKind::Cohere),
         ] {
@@ -1417,6 +1433,7 @@ mod tests {
             "paraformer",
             "dolphin",
             "omnilingual",
+            "parakeet-cpp",
             "cohere",
         ] {
             for model in crate::model_catalog::model_catalog(engine) {
@@ -1495,6 +1512,7 @@ mod tests {
                     "paraformer" => ModelKind::Paraformer,
                     "dolphin" => ModelKind::Dolphin,
                     "omnilingual" => ModelKind::Omnilingual,
+                    "parakeet-cpp" => ModelKind::ParakeetCpp,
                     "cohere" => ModelKind::Cohere,
                     "openvino" => ModelKind::OpenVino,
                     other => panic!(

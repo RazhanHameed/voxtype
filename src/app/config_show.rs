@@ -162,6 +162,26 @@ pub(crate) async fn show_config(config: &config::Config) -> anyhow::Result<()> {
 
     print_available_models("sensevoice");
 
+    // Show parakeet.cpp status
+    println!("\n[parakeet_cpp]");
+    if let Some(ref cpp_config) = config.parakeet_cpp {
+        println!("  model = {:?}", cpp_config.model);
+        if let Some(ref library_path) = cpp_config.library_path {
+            println!("  library_path = {:?}", library_path);
+        }
+        if let Some(ref device) = cpp_config.device {
+            println!("  device = {:?}", device);
+        }
+        if let Some(threads) = cpp_config.threads {
+            println!("  threads = {}", threads);
+        }
+        println!("  on_demand_loading = {}", cpp_config.on_demand_loading);
+    } else {
+        println!("  (not configured)");
+    }
+
+    print_available_models("parakeet-cpp");
+
     println!("\n[output]");
     println!("  mode = {:?}", config.output.mode);
     println!(

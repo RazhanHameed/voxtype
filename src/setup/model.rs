@@ -487,6 +487,33 @@ const OMNILINGUAL_MODELS: &[OmnilingualModelInfo] = &[OmnilingualModelInfo {
 }];
 
 // =============================================================================
+// parakeet.cpp (GGUF) Model Definitions
+// =============================================================================
+// Parakeet-family models as single GGUF files, run by parakeet.cpp's
+// libparakeet.so (the `parakeet-cpp` engine). No ONNX Runtime involved.
+
+struct ParakeetCppModelInfo {
+    name: &'static str,
+    dir_name: &'static str,
+    files: &'static [(&'static str, &'static str)],
+    huggingface_repo: &'static str,
+}
+
+// Fluid Speech Mini by FluidVoice, built on NVIDIA Parakeet TDT 0.6B v3 and
+// Moondream Parakeet Ultra (both CC BY 4.0). The model is licensed CC BY 4.0
+// and needs attribution; see THIRD_PARTY.md. File verified 2026-10-14:
+// 347357184 bytes, sha256 f0796bf40274cc49d3db58563c23cd024b52ca7e2ae4749ccf27af85841726b5.
+const PARAKEET_CPP_MODELS: &[ParakeetCppModelInfo] = &[ParakeetCppModelInfo {
+    name: "fluid-speech-mini",
+    dir_name: "fluid-speech-mini",
+    files: &[(
+        "fluid-speech-mini-q2k-q4k.gguf",
+        "fluid-speech-mini-q2k-q4k.gguf",
+    )],
+    huggingface_repo: "FluidVoice-Labs/fluid-speech-mini-gguf",
+}];
+
+// =============================================================================
 // Cohere Transcribe Model Definitions
 // =============================================================================
 // Encoder-decoder ASR via ONNX Runtime, Whisper-style task tokens. Currently
@@ -806,6 +833,29 @@ impl ModelArtifact for OmnilingualModelInfo {
     }
 }
 
+impl ModelArtifact for ParakeetCppModelInfo {
+    // Intentional: see OmnilingualModelInfo.
+    #[allow(clippy::misnamed_getters)]
+    fn name(&self) -> &str {
+        self.dir_name
+    }
+    fn engine_prefix(&self) -> &'static str {
+        "parakeet-cpp"
+    }
+    fn upstream_repo(&self) -> &str {
+        self.huggingface_repo
+    }
+    fn expected_files(&self) -> Vec<ExpectedFile> {
+        self.files
+            .iter()
+            .map(|(_repo, local)| ExpectedFile {
+                path: (*local).to_string(),
+                size: 0,
+            })
+            .collect()
+    }
+}
+
 impl ModelArtifact for OpenVinoModelInfo {
     // Intentional: the trait method is `name()` but the struct field that
     // serves as the canonical identifier is `dir_name`. Clippy's
@@ -988,6 +1038,21 @@ pub fn registry_snapshot() -> Vec<RegistryEntry> {
     for m in OMNILINGUAL_MODELS {
         out.push(RegistryEntry {
             engine_prefix: "omnilingual",
+            name: m.dir_name.to_string(),
+            upstream_repo: m.huggingface_repo.to_string(),
+            files: m
+                .files
+                .iter()
+                .map(|(remote, local)| RegistryFile {
+                    upstream_path: (*remote).to_string(),
+                    local_path: (*local).to_string(),
+                })
+                .collect(),
+        });
+    }
+    for m in PARAKEET_CPP_MODELS {
+        out.push(RegistryEntry {
+            engine_prefix: "parakeet-cpp",
             name: m.dir_name.to_string(),
             upstream_repo: m.huggingface_repo.to_string(),
             files: m
@@ -3623,6 +3688,59 @@ pub fn download_omnilingual_model(model_name: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn find_parakeet_cpp_model(name: &str) -> Option<&'static ParakeetCppModelInfo> {
+    PARAKEET_CPP_MODELS
+        .iter()
+        .find(|m| m.name == name || m.dir_name == name)
+}
+
+/// Check if a model name is a parakeet.cpp (GGUF) model
+pub fn is_parakeet_cpp_model(name: &str) -> bool {
+    find_parakeet_cpp_model(name).is_some()
+}
+
+/// Directory name for a parakeet.cpp model. Also its config value.
+pub fn parakeet_cpp_dir_name(name: &str) -> Option<&'static str> {
+    find_parakeet_cpp_model(name).map(|m| m.dir_name)
+}
+
+/// parakeet.cpp names to show for `voxtype setup --model`.
+pub fn parakeet_cpp_setup_model_names() -> Vec<&'static str> {
+    PARAKEET_CPP_MODELS.iter().map(|m| m.dir_name).collect()
+}
+
+/// Valid when the directory holds a `.gguf` file that starts with the GGUF
+/// magic, which catches an error page saved under a model name.
+pub(crate) fn validate_gguf_model(path: &Path) -> anyhow::Result<()> {
+    use std::io::Read;
+
+    if !path.exists() {
+        anyhow::bail!("Model directory does not exist: {:?}", path);
+    }
+    let gguf = std::fs::read_dir(path)?
+        .flatten()
+        .map(|e| e.path())
+        .find(|p| p.extension().is_some_and(|x| x == "gguf"))
+        .ok_or_else(|| anyhow::anyhow!("Incomplete model, missing: a .gguf file"))?;
+
+    let mut magic = [0u8; 4];
+    std::fs::File::open(&gguf)?.read_exact(&mut magic)?;
+    if &magic != b"GGUF" {
+        anyhow::bail!("{:?} is not a GGUF file (bad header)", gguf);
+    }
+    Ok(())
+}
+
+/// Download a parakeet.cpp model by name (public API for run_setup).
+pub fn download_parakeet_cpp_model(model_name: &str) -> anyhow::Result<()> {
+    let model = find_parakeet_cpp_model(model_name)
+        .ok_or_else(|| anyhow::anyhow!("Unknown parakeet.cpp model: {}", model_name))?;
+    let models_dir = Config::models_dir();
+    download_artifact(model, &models_dir)?;
+    validate_gguf_model(&models_dir.join(model.dir_name))?;
+    Ok(())
+}
+
 /// Silently point the config at `engine` + `model_name`, like
 /// `set_parakeet_config`: no status output, so `run_setup` can print its own
 /// confirmation while honoring --quiet.
@@ -3807,7 +3925,10 @@ fn update_config_engine(engine_name: &str, model_name: &str) -> anyhow::Result<(
 
 /// Update a config string to use a specific engine and model
 fn update_engine_in_config(config: &str, engine_name: &str, model_name: &str) -> String {
-    let section_name = format!("[{}]", engine_name);
+    // The engine value may contain a dash ("parakeet-cpp") but its config
+    // table is the snake_case field name ("parakeet_cpp").
+    let table_name = engine_name.replace('-', "_");
+    let section_name = format!("[{}]", table_name);
     let mut result = String::new();
     let mut has_engine_line = false;
     let mut has_section = false;
@@ -3864,10 +3985,7 @@ fn update_engine_in_config(config: &str, engine_name: &str, model_name: &str) ->
     }
 
     if !has_section {
-        result.push_str(&format!(
-            "\n[{}]\nmodel = \"{}\"\n",
-            engine_name, model_name
-        ));
+        result.push_str(&format!("\n[{}]\nmodel = \"{}\"\n", table_name, model_name));
     }
 
     if !config.ends_with('\n') && result.ends_with('\n') {
@@ -5317,6 +5435,56 @@ mode = "type"
             assert_eq!(m.engine_prefix(), "omnilingual");
             assert_eq!(m.name(), m.dir_name);
         }
+    }
+
+    #[test]
+    fn parakeet_cpp_engine_prefix() {
+        for m in PARAKEET_CPP_MODELS {
+            assert_eq!(m.engine_prefix(), "parakeet-cpp");
+            assert_eq!(m.name(), m.dir_name);
+            assert!(m.files.iter().all(|(_, local)| local.ends_with(".gguf")));
+        }
+    }
+
+    #[test]
+    fn parakeet_cpp_models_are_in_the_registry_snapshot() {
+        assert_eq!(
+            expected_file_names("parakeet-cpp", "fluid-speech-mini"),
+            vec!["fluid-speech-mini-q2k-q4k.gguf".to_string()]
+        );
+    }
+
+    #[test]
+    fn validate_gguf_model_checks_the_magic() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(validate_gguf_model(dir.path()).is_err(), "no file yet");
+
+        std::fs::write(dir.path().join("m.gguf"), b"<html>error</html>").unwrap();
+        assert!(validate_gguf_model(dir.path())
+            .unwrap_err()
+            .to_string()
+            .contains("not a GGUF"));
+
+        std::fs::write(dir.path().join("m.gguf"), b"GGUF\x03\0\0\0").unwrap();
+        assert!(validate_gguf_model(dir.path()).is_ok());
+    }
+
+    /// The engine name has a dash but its config table is snake_case, so
+    /// activating a parakeet.cpp model must write `[parakeet_cpp]`.
+    #[test]
+    fn update_engine_in_config_uses_the_snake_case_table_for_parakeet_cpp() {
+        let out = update_engine_in_config(
+            "engine = \"whisper\"\n",
+            "parakeet-cpp",
+            "fluid-speech-mini",
+        );
+        assert!(out.contains("engine = \"parakeet-cpp\""));
+        assert!(out.contains("[parakeet_cpp]"));
+        assert!(!out.contains("[parakeet-cpp]"));
+
+        let again = update_engine_in_config(&out, "parakeet-cpp", "other");
+        assert_eq!(again.matches("[parakeet_cpp]").count(), 1);
+        assert!(again.contains("model = \"other\""));
     }
 
     #[test]

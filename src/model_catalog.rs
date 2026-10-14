@@ -22,6 +22,7 @@ pub const CATALOG_ENGINES: &[&str] = &[
     "paraformer",
     "dolphin",
     "omnilingual",
+    "parakeet-cpp",
     "cohere",
     "openvino",
 ];
@@ -36,6 +37,7 @@ pub fn model_catalog(engine: &str) -> Vec<&'static str> {
         "paraformer" => vec!["paraformer-zh", "paraformer-en"],
         "dolphin" => vec!["dolphin-base"],
         "omnilingual" => vec!["omnilingual-300m"],
+        "parakeet-cpp" => model::parakeet_cpp_setup_model_names(),
         "cohere" => vec![
             "cohere-transcribe-q4f16",
             "cohere-transcribe-q4",
@@ -59,6 +61,7 @@ pub const fn default_model(engine: &str) -> &'static str {
         b"paraformer" => "paraformer-zh",
         b"dolphin" => "dolphin-base",
         b"omnilingual" => "omnilingual-300m",
+        b"parakeet-cpp" => "fluid-speech-mini",
         b"cohere" => "cohere-transcribe-q4f16",
         b"openvino" => "base.en-int8",
         _ => "",
@@ -98,7 +101,9 @@ pub fn download_arg(engine: &str, model: &str) -> Option<String> {
     match engine {
         "whisper" | "parakeet" | "openvino" => Some(model.to_string()),
         "sensevoice" | "moonshine" => Some(model_dir_name(engine, model)),
-        "paraformer" | "dolphin" | "omnilingual" | "cohere" => Some(model.to_string()),
+        "paraformer" | "dolphin" | "omnilingual" | "parakeet-cpp" | "cohere" => {
+            Some(model.to_string())
+        }
         _ => None,
     }
 }

@@ -58,6 +58,7 @@ Selects which speech-to-text engine to use for transcription.
 - `dolphin` - Dictation-optimized CTC via ONNX Runtime (Chinese + English)
 - `omnilingual` - FunASR Omnilingual CTC via ONNX Runtime (50+ languages)
 - `cohere` - Cohere Transcribe encoder-decoder via ONNX Runtime (#1 Open ASR Leaderboard, 14 languages, ~3 GB model)
+- `parakeet-cpp` - GGUF Parakeet models via parakeet.cpp (ggml, Vulkan/CUDA/CPU, no ONNX Runtime, any binary variant)
 
 **Example:**
 ```toml
@@ -1476,6 +1477,77 @@ on_demand_loading = false  # Keep model loaded for fast response
 ```
 
 ---
+
+## [parakeet_cpp]
+
+Configuration for the parakeet.cpp engine. This section is only used when `engine = "parakeet-cpp"`.
+
+parakeet.cpp runs Parakeet-family models stored as single GGUF files on ggml, with CPU, Vulkan, CUDA and Metal backends. Voxtype loads parakeet.cpp's shared library (`libparakeet.so`) at runtime inside a separate worker process, so this engine works with every voxtype binary and needs no ONNX Runtime. The library is not bundled: install it from the [parakeet.cpp releases](https://github.com/mudler/parakeet.cpp/releases) (the `parakeet-*-lib-linux-*` archive that matches your GPU, for example `vulkan-x64`) and put `libparakeet.so` in a directory on your library path, such as `/usr/local/lib`.
+
+The worker keeps the model resident. Before it signals ready it runs one short silent inference, so GPU setup (shader compilation on Vulkan) does not land on your first dictation.
+
+### model
+
+**Type:** String
+**Default:** `"fluid-speech-mini"`
+**Required:** No
+
+A model name from `voxtype info models --engine parakeet-cpp`, or a path to a `.gguf` file. A name is looked up in `~/.local/share/voxtype/models/<name>/`, and the first `.gguf` file in that directory is used.
+
+**Available models:**
+
+| Model | Size | Languages | Notes |
+|-------|------|-----------|-------|
+| `fluid-speech-mini` | ~331 MB | English | Fluid Speech Mini by FluidVoice, built on NVIDIA Parakeet TDT 0.6B v3 and Moondream Parakeet Ultra. CC BY 4.0. Q2_K/Q4_K GGUF. |
+
+Download with `voxtype setup --download --model fluid-speech-mini`. Add `--activate` to also point the config at it.
+
+Other Parakeet GGUF files that parakeet.cpp loads (for example from [mudler/parakeet-cpp-gguf](https://huggingface.co/mudler/parakeet-cpp-gguf)) work by path.
+
+### library_path
+
+**Type:** String
+**Default:** none (search `LD_LIBRARY_PATH`, `~/.local/lib`, `/usr/local/lib`, `/usr/lib`, `/usr/lib64`, `/usr/lib/x86_64-linux-gnu`, `/opt/parakeet.cpp/lib`)
+**Required:** No
+
+Path to `libparakeet.so`, or to the directory that contains it.
+
+### device
+
+**Type:** String
+**Default:** none (parakeet.cpp picks the first GPU it finds)
+**Required:** No
+
+The ggml device to run on: `cpu`, or a name such as `Vulkan0`, `Vulkan1` or `CUDA0`. Voxtype passes it to the worker as `PARAKEET_DEVICE`.
+
+On a laptop with an integrated and a discrete GPU, the default is usually the integrated one. The device list is printed to the daemon log at startup (`ggml_vulkan: ... devices`). Set the discrete GPU here.
+
+### threads
+
+**Type:** Integer
+**Default:** none (runtime default)
+**Required:** No
+
+CPU thread count, passed to the worker as `OMP_NUM_THREADS`. It only affects work that runs on the CPU.
+
+### on_demand_loading
+
+**Type:** Boolean
+**Default:** `false`
+**Required:** No
+
+When `false`, the worker starts with the daemon and keeps the model loaded. When `true`, the worker starts when recording starts, so loading overlaps with your speech, and exits after each transcription to free GPU memory.
+
+**Example:**
+```toml
+engine = "parakeet-cpp"
+
+[parakeet_cpp]
+model = "fluid-speech-mini"
+device = "Vulkan1"
+# library_path = "/usr/local/lib/libparakeet.so"
+# on_demand_loading = false
+```
 
 ## [cohere]
 

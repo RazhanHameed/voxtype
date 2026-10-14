@@ -844,6 +844,7 @@ Voxtype supports seven speech-to-text engines. Whisper uses whisper.cpp and work
 | **Paraformer** | Chinese + English dictation | No | Chinese (with English code-switching) |
 | **Dolphin** | Dictation-optimized, fast CTC | No | Chinese + English |
 | **Omnilingual** | Broadest language coverage in ONNX engines | No | 50+ languages |
+| **parakeet.cpp** | GGUF Parakeet models on ggml (Vulkan/CUDA/CPU), no ONNX Runtime | Optional (Vulkan, CUDA) | English (Fluid Speech Mini) |
 | **Cohere** | #1 Open ASR Leaderboard accuracy | Optional (CUDA via `cohere-cuda`) | Arabic, German, English, Spanish, French, Hindi, Italian, Japanese, Korean, Dutch, Portuguese, Russian, Turkish, Chinese (14) |
 
 ### Selecting an Engine
@@ -862,6 +863,9 @@ engine = "paraformer"
 engine = "dolphin"
 engine = "omnilingual"
 engine = "cohere"
+
+# GGUF engine (any binary variant, needs libparakeet.so installed)
+engine = "parakeet-cpp"
 ```
 
 **Via CLI flag** (overrides config):
@@ -875,9 +879,10 @@ voxtype --engine paraformer daemon
 voxtype --engine dolphin daemon
 voxtype --engine omnilingual daemon
 voxtype --engine cohere daemon
+voxtype --engine parakeet-cpp daemon
 ```
 
-Valid `--engine` values: `whisper`, `parakeet`, `moonshine`, `sensevoice`, `paraformer`, `dolphin`, `omnilingual`, `cohere`.
+Valid `--engine` values: `whisper`, `parakeet`, `moonshine`, `sensevoice`, `paraformer`, `dolphin`, `omnilingual`, `cohere`, `openvino`, `soniox`, `parakeet-cpp`.
 
 ### Switching to an ONNX Engine
 
@@ -1055,6 +1060,32 @@ model = "omnilingual-large"  # Default model
 # threads = 4
 # on_demand_loading = false
 ```
+
+### parakeet.cpp (GGUF)
+
+parakeet.cpp is a ggml port of NVIDIA's Parakeet models. Voxtype uses it for Fluid Speech Mini, an English dictation model that is a 331 MB download. It offers:
+
+- Vulkan, CUDA and CPU backends, with no ONNX Runtime
+- Works with every voxtype binary, because the library is loaded at runtime
+- A resident worker process, so the model stays warm between dictations
+- Trained to keep following the right speaker when another voice is in the room (vendor-reported results; see the model card)
+
+**Requirements:**
+- `libparakeet.so` from the [parakeet.cpp releases](https://github.com/mudler/parakeet.cpp/releases), in a library directory or set with `library_path`
+- The model: `voxtype setup --download --model fluid-speech-mini --activate`
+
+**Configuration:**
+
+```toml
+engine = "parakeet-cpp"
+
+[parakeet_cpp]
+model = "fluid-speech-mini"
+# device = "Vulkan1"       # pick a GPU; the default is parakeet.cpp's first device
+# on_demand_loading = false
+```
+
+See [CONFIGURATION.md](CONFIGURATION.md#parakeet_cpp) for every option and [TROUBLESHOOTING.md](TROUBLESHOOTING.md#parakeet-cpp-library-not-found) if the library is not found.
 
 ### Cohere Transcribe
 

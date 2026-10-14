@@ -30,6 +30,13 @@ voxtype transcribe --engine dolphin "$ZH_AUDIO"
 
 # Omnilingual (requires --features omnilingual, 1600+ languages)
 voxtype transcribe --engine omnilingual "$EN_AUDIO"
+
+# parakeet.cpp (any binary; needs libparakeet.so and the GGUF model)
+# voxtype setup --download --model fluid-speech-mini
+voxtype transcribe --engine parakeet-cpp "$EN_AUDIO"
+# Expected: the English sentence, and a log line naming the chosen device
+# ("pk::Backend using device: Vulkan1"). Run it twice: the second run should
+# show "warm-up in 0.1s" and an inference time well under a second.
 ```
 
 ## Engine Daemon Integration
@@ -50,7 +57,7 @@ voxtype record start && sleep 3 && voxtype record stop
 # 5. Check logs for correct engine
 journalctl --user -u voxtype --since "30 seconds ago" | grep -i "transcri"
 
-# Repeat for: paraformer, dolphin, omnilingual, moonshine, parakeet
+# Repeat for: paraformer, dolphin, omnilingual, moonshine, parakeet, parakeet-cpp
 # Then restore engine = "whisper" when done
 ```
 

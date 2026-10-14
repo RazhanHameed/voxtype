@@ -353,6 +353,44 @@ voxtype setup --download --model <model-name>
 
 Setup skips the compile when the model's cache blob already exists, so rerunning after a successful compile is cheap.
 
+### parakeet-cpp: library not found
+
+**Symptom:** The daemon fails to start the engine with `Failed to load libparakeet.so` or `parakeet.cpp library not found`.
+
+**Cause:** The `parakeet-cpp` engine loads parakeet.cpp's shared library at runtime, and voxtype does not bundle it.
+
+**Solution:**
+```bash
+# Download the lib archive for your GPU from
+# https://github.com/mudler/parakeet.cpp/releases
+# (parakeet-<version>-lib-linux-vulkan-x64.tar.gz for Vulkan, -cpu-x64 for CPU only)
+tar -xzf parakeet-*-lib-linux-vulkan-x64.tar.gz
+sudo cp parakeet-*-lib-linux-vulkan-x64/libparakeet.so /usr/local/lib/
+sudo ldconfig
+```
+
+Or keep the library where it is and point voxtype at it:
+```toml
+[parakeet_cpp]
+library_path = "/path/to/libparakeet.so"
+```
+
+If the load error names a missing `libvulkan.so.1` or `libgomp.so.1`, install your distro's Vulkan loader or OpenMP runtime.
+
+### parakeet-cpp: runs on the wrong GPU, or slowly
+
+**Cause:** With no `device` set, parakeet.cpp uses the first GPU ggml reports. On a laptop with two GPUs that is often the integrated one.
+
+**Solution:** Start the daemon and read the `ggml_vulkan: ... devices` lines in its log, then set the device:
+```toml
+[parakeet_cpp]
+device = "Vulkan1"   # or "cpu" to force the CPU
+```
+
+### parakeet-cpp: first dictation after startup is slow
+
+The first inference on a GPU pays a one-time setup cost (about 3 seconds on a GTX 1070, less once the driver's shader cache is warm). Voxtype runs a short silent inference at startup to absorb it, so a slow first dictation usually means the worker was started on demand. Set `on_demand_loading = false` to keep the worker resident.
+
 ### Voxtype crashes during transcription (Linux)
 
 **Cause:** On some Linux systems (particularly with glibc 2.42+ like Ubuntu 25.10), the whisper-rs FFI bindings crash due to C++ exceptions crossing the FFI boundary.

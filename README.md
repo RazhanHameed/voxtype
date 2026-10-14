@@ -373,6 +373,7 @@ Voxtype ships separate binaries for Whisper and ONNX engines. Use `voxtype setup
 | **Omnilingual** | 1600+ languages | wav2vec2 CTC (ONNX) | Low-resource and rare languages |
 | **Cohere Transcribe** | 14 languages | Encoder-decoder (ONNX) | Fast CPU dictation with punctuation |
 | **OpenVINO Whisper** | 99 languages | Encoder-decoder (OpenVINO) | Intel NPU (Lunar Lake), CPU/GPU fallback |
+| **parakeet.cpp** | English (Fluid Speech Mini) | TDT (GGUF, ggml) | Small, fast English dictation on Vulkan/CUDA/CPU without ONNX Runtime |
 
 To set the engine in your config:
 
