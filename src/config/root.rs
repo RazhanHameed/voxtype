@@ -1,8 +1,8 @@
 use super::{
     AudioConfig, CohereConfig, DolphinConfig, HotkeyConfig, MeetingConfig, MoonshineConfig,
-    OmnilingualConfig, OpenVinoConfig, OutputConfig, ParaformerConfig, ParakeetConfig, Profile,
-    SenseVoiceConfig, SonioxConfig, StatusConfig, StreamingConfig, TextConfig, TranscriptionEngine,
-    VadConfig, WhisperConfig,
+    OmnilingualConfig, OpenVinoConfig, OutputConfig, ParaformerConfig, ParakeetConfig,
+    ParakeetCppConfig, Profile, SenseVoiceConfig, SonioxConfig, StatusConfig, StreamingConfig,
+    TextConfig, TranscriptionEngine, VadConfig, WhisperConfig,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -52,6 +52,10 @@ pub struct Config {
     /// Omnilingual configuration (optional, only used when engine = "omnilingual")
     #[serde(default)]
     pub omnilingual: Option<OmnilingualConfig>,
+
+    /// parakeet.cpp configuration (optional, only used when engine = "parakeet-cpp")
+    #[serde(default)]
+    pub parakeet_cpp: Option<ParakeetCppConfig>,
 
     /// Cohere Transcribe configuration (optional, only used when engine = "cohere")
     #[serde(default)]
@@ -124,6 +128,7 @@ impl Default for Config {
             paraformer: None,
             dolphin: None,
             omnilingual: None,
+            parakeet_cpp: None,
             cohere: None,
             openvino: None,
             soniox: None,
@@ -374,6 +379,11 @@ impl Config {
                 .as_ref()
                 .map(|o| o.on_demand_loading)
                 .unwrap_or(false),
+            TranscriptionEngine::ParakeetCpp => self
+                .parakeet_cpp
+                .as_ref()
+                .map(|p| p.on_demand_loading)
+                .unwrap_or(false),
             // Soniox is a cloud backend; nothing to load on demand.
             TranscriptionEngine::Soniox => false,
         }
@@ -460,6 +470,11 @@ impl Config {
                 .as_ref()
                 .map(|s| s.model.as_str())
                 .unwrap_or("soniox (not configured)"),
+            TranscriptionEngine::ParakeetCpp => self
+                .parakeet_cpp
+                .as_ref()
+                .map(|p| p.model.as_str())
+                .unwrap_or("parakeet-cpp (not configured)"),
         }
     }
 

@@ -162,6 +162,11 @@ pub(crate) async fn dispatch(
             transcribe::worker::run_worker(&whisper_config)?;
         }
 
+        Commands::ParakeetCppWorker { model, library } => {
+            // Internal command: spawned by the daemon for the parakeet-cpp engine
+            transcribe::parakeet_cpp::run_worker(&model, &library)?;
+        }
+
         Commands::Setup {
             action,
             download,

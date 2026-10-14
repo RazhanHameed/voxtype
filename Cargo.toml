@@ -48,6 +48,9 @@ async-trait = "0.1"
 # Common dependencies
 libc = "0.2"
 
+# Runtime loading of parakeet.cpp's libparakeet.so (parakeet-cpp engine)
+libloading = "0.8"
+
 # Audio capture
 cpal = "0.15"
 hound = "3"  # WAV file reading/writing

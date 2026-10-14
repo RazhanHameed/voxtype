@@ -54,6 +54,19 @@ pub enum Commands {
         threads: Option<usize>,
     },
 
+    /// Internal: Worker process for the parakeet-cpp engine
+    /// Loads libparakeet.so, then serves transcription requests on stdin/stdout
+    #[command(hide = true)]
+    ParakeetCppWorker {
+        /// Path to the GGUF model (passed from parent process)
+        #[arg(long)]
+        model: std::path::PathBuf,
+
+        /// Path to libparakeet.so (passed from parent process)
+        #[arg(long)]
+        library: std::path::PathBuf,
+    },
+
     /// Setup and installation utilities
     Setup {
         #[command(subcommand)]

@@ -9,6 +9,7 @@ mod omnilingual;
 mod openvino;
 mod paraformer;
 mod parakeet;
+mod parakeet_cpp;
 mod sensevoice;
 mod soniox;
 
@@ -19,6 +20,7 @@ pub use omnilingual::OmnilingualConfig;
 pub use openvino::OpenVinoConfig;
 pub use paraformer::ParaformerConfig;
 pub use parakeet::{ParakeetConfig, ParakeetModelType};
+pub use parakeet_cpp::ParakeetCppConfig;
 pub use sensevoice::SenseVoiceConfig;
 pub use soniox::SonioxConfig;
 
@@ -70,6 +72,11 @@ pub enum TranscriptionEngine {
     OpenVino,
     /// Use Soniox (cloud streaming WebSocket STT).
     Soniox,
+    /// Use parakeet.cpp (ggml/GGUF Parakeet models via the system
+    /// `libparakeet.so`, in an isolated worker process). No ONNX Runtime.
+    #[serde(rename = "parakeet-cpp")]
+    #[strum(serialize = "parakeet-cpp")]
+    ParakeetCpp,
 }
 
 impl TranscriptionEngine {

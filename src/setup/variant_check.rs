@@ -63,7 +63,8 @@ pub enum Remediation {
 /// the feature name is just the engine's canonical name.
 pub fn required_feature(engine: TranscriptionEngine) -> Option<&'static str> {
     match engine {
-        TranscriptionEngine::Whisper => None,
+        // parakeet-cpp loads libparakeet.so at runtime; no Cargo feature.
+        TranscriptionEngine::Whisper | TranscriptionEngine::ParakeetCpp => None,
         other => Some(other.name()),
     }
 }

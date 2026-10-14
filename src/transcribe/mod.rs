@@ -14,6 +14,7 @@
 //! - Optionally OpenVINO Whisper for Intel NPU/CPU/GPU (when `openvino-whisper` feature is enabled)
 
 pub mod cli;
+pub mod parakeet_cpp;
 #[cfg(feature = "parakeet")]
 pub mod parakeet_streaming;
 pub mod remote;
@@ -293,6 +294,15 @@ pub fn create_transcriber(config: &Config) -> Result<Box<dyn Transcriber>, Trans
             "Cohere engine requested but voxtype was not compiled with --features cohere"
                 .to_string(),
         )),
+        TranscriptionEngine::ParakeetCpp => {
+            let cfg = config.parakeet_cpp.as_ref().ok_or_else(|| {
+                TranscribeError::InitFailed(
+                    "parakeet-cpp engine selected but [parakeet_cpp] config section is missing"
+                        .to_string(),
+                )
+            })?;
+            Ok(Box::new(parakeet_cpp::ParakeetCppTranscriber::new(cfg)?))
+        }
         TranscriptionEngine::Soniox => {
             let cfg = config.soniox.as_ref().ok_or_else(|| {
                 TranscribeError::InitFailed(
